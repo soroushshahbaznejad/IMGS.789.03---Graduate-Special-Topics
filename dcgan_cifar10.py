@@ -213,11 +213,16 @@ for epoch in range(num_epochs):
 # 7. Visualize the Results
 # ========================
 
+# Import necessary modules
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import numpy as np
+
 # Plot the losses
 plt.figure(figsize=(10,5))
 plt.title("Generator and Discriminator Loss During Training")
-plt.plot(G_losses,label="Generator")
-plt.plot(D_losses,label="Discriminator")
+plt.plot(G_losses, label="Generator")
+plt.plot(D_losses, label="Discriminator")
 plt.xlabel("Iterations")
 plt.ylabel("Loss")
 plt.legend()
@@ -225,21 +230,26 @@ plt.savefig('dcgan_results/loss_curves.png')
 plt.show()
 
 # Animation showing the improvements of the generator
-import matplotlib.animation as animation
-from IPython.display import HTML
-
 fig = plt.figure(figsize=(8,8))
 plt.axis("off")
-ims = [[plt.imshow(np.transpose(img,(1,2,0)), animated=True)] for img in img_list]
+
+ims = []
+for img in img_list:
+    ims.append([plt.imshow(np.transpose(img, (1,2,0)), animated=True)])
+
 ani = animation.ArtistAnimation(fig, ims, interval=500, repeat_delay=1000, blit=True)
+
+# Save the animation as a GIF file
 ani.save('dcgan_results/generation_animation.gif', writer='pillow')
+print("Animation saved as 'dcgan_results/generation_animation.gif'.")
 
 # Display real images
 real_batch = next(iter(dataloader))
 plt.figure(figsize=(8,8))
 plt.axis("off")
 plt.title("Real Images")
-plt.imshow(np.transpose(vutils.make_grid(real_batch[0][:64], padding=2, normalize=True).cpu(),(1,2,0)))
+plt.imshow(np.transpose(
+    vutils.make_grid(real_batch[0][:64], padding=2, normalize=True).cpu(), (1,2,0)))
 plt.savefig('dcgan_results/real_images.png')
 plt.show()
 
@@ -247,6 +257,13 @@ plt.show()
 plt.figure(figsize=(8,8))
 plt.axis("off")
 plt.title("Fake Images")
-plt.imshow(np.transpose(img_list[-1],(1,2,0)))
+plt.imshow(np.transpose(img_list[-1], (1,2,0)))
 plt.savefig('dcgan_results/fake_images_epoch_%d.png' % num_epochs)
 plt.show()
+# ========================
+# 8. Save the Trained Generator Model
+# ========================
+
+# Save the trained generator model
+torch.save(netG.state_dict(), 'generator.pth')
+print("Generator model saved as 'generator.pth'.")
