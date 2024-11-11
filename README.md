@@ -8,9 +8,6 @@ This repository provides implementations of Generative Adversarial Networks (GAN
 
 - [Overview](#overview)
 - [File Descriptions](#file-descriptions)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Results and Visualizations](#results-and-visualizations)
 - [Acknowledgments](#acknowledgments)
 
 ---
