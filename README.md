@@ -86,3 +86,39 @@ VAEs are probabilistic generative models that learn a distribution over the inpu
    ```bash
    git clone https://github.com/soroushshahbaznejad/IMGS.789.03---Graduate-Special-Topics.git
    cd IMGS.789.03---Graduate-Special-Topics
+   Install required libraries:
+
+```bash
+pip install torch torchvision matplotlib seaborn scikit-learn
+Verify the data:
+
+MNIST and CIFAR-10 datasets will be downloaded automatically when running the scripts.
+Usage
+To run each file, use the following commands in the terminal:
+
+GAN for MNIST:
+
+```bash
+
+python gan_mnist.py
+DCGAN for CIFAR-10:
+
+```bash
+python dcgan_cifar10.py
+Latent Space Interpolation:
+
+```bash
+python latent_interpolation.py
+VAE for MNIST:
+
+```bash
+python vae_mnist.py
+VAE for Anomaly Detection:
+
+```bash
+python vae_anomaly_detection.py
+VAE Latent Space Visualization:
+
+```bash
+python vae_latent_space_visualization.py
+
