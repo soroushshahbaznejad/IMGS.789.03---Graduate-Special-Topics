@@ -84,5 +84,5 @@ VAEs are probabilistic generative models that learn a distribution over the inpu
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/your_username/generative-models.git
-   cd generative-models
+   git clone https://github.com/soroushshahbaznejad/IMGS.789.03---Graduate-Special-Topics.git
+   cd IMGS.789.03---Graduate-Special-Topics
