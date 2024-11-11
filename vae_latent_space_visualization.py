@@ -1,12 +1,20 @@
+# Import necessary libraries (if not already imported)
 import os
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend
 import matplotlib.pyplot as plt
+import seaborn as sns
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
+
+# Set device (GPU if available)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Directory to save plots
 plot_dir = 'plots'
@@ -30,6 +38,7 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size,
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size,
                          shuffle=False)
 
+# Define the VAE model (with modification to return z)
 class VAE(nn.Module):
     def __init__(self, latent_dim=20):
         super(VAE, self).__init__()
@@ -65,8 +74,9 @@ class VAE(nn.Module):
         mu, log_var = self.encode(x.view(-1, 28*28))
         z = self.reparameterize(mu, log_var)
         recon_x = self.decode(z)
-        return recon_x, mu, log_var
+        return recon_x, mu, log_var, z  # Return z
 
+# Loss function
 def loss_function(recon_x, x, mu, log_var):
     BCE = nn.functional.binary_cross_entropy(
         recon_x, x.view(-1, 28*28), reduction='sum')
@@ -75,93 +85,61 @@ def loss_function(recon_x, x, mu, log_var):
 
 # Initialize model, optimizer, and number of epochs
 latent_dim = 20
-model = VAE(latent_dim=latent_dim)
+model = VAE(latent_dim=latent_dim).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-num_epochs = 50
+num_epochs = 10  # Reduced for brevity
 
-# Lists to keep track of losses
-train_loss_list = []
-bce_loss_list = []
-kld_loss_list = []
-
+# Training loop
 model.train()
 for epoch in range(num_epochs):
     train_loss = 0
-    bce_loss = 0
-    kld_loss = 0
     for batch_idx, (data, _) in enumerate(train_loader):
+        data = data.to(device)
         optimizer.zero_grad()
-        recon_batch, mu, log_var = model(data)
-        loss, bce, kld = loss_function(recon_batch, data, mu, log_var)
+        recon_batch, mu, log_var, _ = model(data)
+        loss, _, _ = loss_function(recon_batch, data, mu, log_var)
         loss.backward()
         train_loss += loss.item()
-        bce_loss += bce.item()
-        kld_loss += kld.item()
         optimizer.step()
     avg_loss = train_loss / len(train_loader.dataset)
-    avg_bce = bce_loss / len(train_loader.dataset)
-    avg_kld = kld_loss / len(train_loader.dataset)
-    train_loss_list.append(avg_loss)
-    bce_loss_list.append(avg_bce)
-    kld_loss_list.append(avg_kld)
-    print(f'Epoch {epoch+1}, Loss: {avg_loss:.4f}, BCE: {avg_bce:.4f}, KLD: {avg_kld:.4f}')
+    print(f'Epoch {epoch+1}, Loss: {avg_loss:.4f}')
 
-# Visualize reconstructed images
+# ==============================
+# Latent Space Visualization
+# ==============================
+
+# Collect latent vectors and labels from test set
+latent_vectors = []
+labels_list = []
+
 model.eval()
 with torch.no_grad():
-    # Get a batch of test data
-    test_data, _ = next(iter(test_loader))
-    recon_batch, _, _ = model(test_data)
-    n = 8  # Number of images to display
-    plt.figure(figsize=(15, 5))
-    for i in range(n):
-        # Original images
-        ax = plt.subplot(2, n, i + 1)
-        plt.imshow(test_data[i].view(28, 28), cmap='gray')
-        ax.axis('off')
-        # Reconstructed images
-        ax = plt.subplot(2, n, i + 1 + n)
-        plt.imshow(recon_batch[i].view(28, 28), cmap='gray')
-        ax.axis('off')
-    # Save the figure
-    plt.savefig(os.path.join(plot_dir, 'reconstructed_images.png'))
-    plt.close()
+    for data, labels in test_loader:
+        data = data.to(device)
+        recon_batch, mu, log_var, z = model(data)
+        latent_vectors.append(z.cpu())
+        labels_list.extend(labels.numpy())
 
-# Generate new images by sampling from the latent space
-with torch.no_grad():
-    # Sample random vectors from the latent space
-    z = torch.randn(64, latent_dim)
-    sample = model.decode(z).cpu()
-    plt.figure(figsize=(8, 8))
-    for i in range(64):
-        ax = plt.subplot(8, 8, i + 1)
-        plt.imshow(sample[i].view(28, 28), cmap='gray')
-        ax.axis('off')
-    # Save the figure
-    plt.savefig(os.path.join(plot_dir, 'generated_images.png'))
-    plt.close()
+# Concatenate all latent vectors
+latent_vectors = torch.cat(latent_vectors, dim=0).numpy()
+labels_list = np.array(labels_list)
 
-# Plot ELBO Loss and KL-Divergence
-epochs = range(1, num_epochs + 1)
-plt.figure(figsize=(12, 5))
+# Dimensionality reduction to 2D
+# Option 1: t-SNE (uncomment to use t-SNE)
+# tsne = TSNE(n_components=2, random_state=42)
+# latent_2d = tsne.fit_transform(latent_vectors)
 
-# Plot ELBO Loss
-plt.subplot(1, 2, 1)
-plt.plot(epochs, train_loss_list, label='ELBO Loss')
-plt.title('ELBO Loss Over Epochs')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
+# Option 2: PCA
+pca = PCA(n_components=2)
+latent_2d = pca.fit_transform(latent_vectors)
 
-# Plot KL-Divergence
-plt.subplot(1, 2, 2)
-plt.plot(epochs, kld_loss_list, label='KL Divergence', color='orange')
-plt.title('KL Divergence Over Epochs')
-plt.xlabel('Epochs')
-plt.ylabel('KL Divergence')
-plt.legend()
-
-plt.tight_layout()
-# Save the figure
-plt.savefig(os.path.join(plot_dir, 'training_loss.png'))
+# Plot the 2D scatter plot
+plt.figure(figsize=(12, 10))
+scatter = plt.scatter(latent_2d[:, 0], latent_2d[:, 1], c=labels_list, cmap='tab10', alpha=0.7)
+plt.colorbar(scatter, ticks=range(10))
+plt.title('2D Visualization of VAE Latent Space')
+plt.xlabel('Dimension 1')
+plt.ylabel('Dimension 2')
+plt.grid(True)
+plt.savefig(os.path.join(plot_dir, 'latent_space_visualization.png'))
 plt.close()
